@@ -13,4 +13,21 @@ CPMAddPackage(
   "USE_ZLIB OFF" "CURL_DISABLE_CRYPTO_AUTH ON" "USE_LIBSSH2 OFF" "USE_LIBSSH OFF"
 )
 
+if(BUILD_BENCHMARK)
+  CPMAddPackage(
+    NAME benchmark
+    GITHUB_REPOSITORY google/benchmark
+    GIT_TAG main
+    OPTIONS
+    "BENCHMARK_DOWNLOAD_DEPENDENCIES ON" "BENCHMARK_ENABLE_TESTING OFF"
+  )
+  CPMAddPackage(
+    NAME TinyCC
+    GITHUB_REPOSITORY TinyCC/tinycc
+    GIT_TAG mob
+    DOWNLOAD_ONLY TRUE
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/benchmark/tinycc
+  )
+endif()
+
 endfunction()

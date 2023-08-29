@@ -9,6 +9,7 @@ option(BUILD_HASHER_EXAMPLE "Build the example program examples/hasher" OFF)
 option(BUILD_TESTING "Build the unit tests (test/)" OFF)
 option(SANITIZE "Build with address sanitizer and undefined behavior sanitizer" OFF)
 option(FUZZ_W3C_PROPAGATION "Build a fuzzer for W3C propagation" OFF)
+option(BUILD_BENCHMARK "Build benchmarks" ON)
 
 set(CMAKE_BUILD_TYPE "RelWithDebInfo")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
