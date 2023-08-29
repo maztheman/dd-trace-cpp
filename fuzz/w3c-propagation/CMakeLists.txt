@@ -1,4 +1,5 @@
 add_executable(fuzz fuzz.cpp)
 
-add_dependencies(fuzz dd_trace_cpp-static)
+target_compile_options(fuzz PRIVATE -fsanitize=fuzzer)
+target_link_options(fuzz PRIVATE -fsanitize=fuzzer)
 target_link_libraries(fuzz dd_trace_cpp-static)

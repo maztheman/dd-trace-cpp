@@ -292,7 +292,7 @@ Expected<FinalizedTracerConfig> finalize_config(const TracerConfig &config) {
       prefix += " environment variable: ";
       return error->with_prefix(prefix);
     }
-    result.defaults.tags = std::move(*tags);
+    std::swap(result.defaults.tags, *tags);
   }
 
   if (config.logger) {

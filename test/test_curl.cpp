@@ -341,7 +341,7 @@ TEST_CASE("setopt failures") {
 #define CASE(OPTION) \
   { OPTION, #OPTION }
 
-  const auto &[which_fails, name] = GENERATE(
+  const auto [which_fails, name] = GENERATE(
       values<TestCase>({CASE(CURLOPT_ERRORBUFFER), CASE(CURLOPT_HEADERDATA),
                         CASE(CURLOPT_HEADERFUNCTION), CASE(CURLOPT_HTTPHEADER),
                         CASE(CURLOPT_POST), CASE(CURLOPT_POSTFIELDS),

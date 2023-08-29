@@ -528,7 +528,7 @@ TEST_CASE("injecting W3C traceparent header") {
       int sampling_priority;
       std::string expected_flags;
     };
-    const auto& [sampling_priority, expected_flags] = GENERATE(
+    const auto [sampling_priority, expected_flags] = GENERATE(
         values<TestCase>({{-1, "00"}, {0, "00"}, {1, "01"}, {2, "01"}}));
 
     CAPTURE(sampling_priority);

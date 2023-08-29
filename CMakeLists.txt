@@ -2,7 +2,7 @@
 # "./CheckRequiredCMakeVersion.cmake".
 cmake_minimum_required(VERSION 3.24)
 
-project(dd-trace-cpp)
+project(dd-trace-cpp CXX)
 
 option(BUILD_COVERAGE "Build code with code coverage profiling instrumentation" OFF)
 option(BUILD_HASHER_EXAMPLE "Build the example program examples/hasher" OFF)
@@ -17,73 +17,17 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# This warning has a false positive. See
-# <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=108088>.
-add_compile_options(-Wno-error=free-nonheap-object)
+include(cmake/SetupProject.cmake)
 
-# This warning has a false positive with clang. See
-# <https://stackoverflow.com/questions/52416362>.
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    add_compile_options(-Wno-error=unused-lambda-capture)
-endif()
-
-# If we're building with clang, then use the libc++ version of the standard
-# library instead of libstdc++. Better coverage of build configurations.
-#
-# But there's one exception: libfuzzer is built with libstdc++ on Ubuntu,
-# and so won't link to libc++. So, if any of the FUZZ_* variables are set,
-# keep to libstdc++ (the default on most systems).
-if ((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND (NOT ${FUZZ_W3C_PROPAGATION}))
-    add_compile_options(-stdlib=libc++)
-    add_link_options(-stdlib=libc++)
-endif()
-
-include(ProcessorCount)
-ProcessorCount(NUM_PROCESSORS)
-set(MAKE_JOB_COUNT ${NUM_PROCESSORS} CACHE STRING "Number of jobs to use when building libcurl")
-
-function(add_sanitizers)
-  add_compile_options(-fsanitize=address)
-  add_link_options(-fsanitize=address)
-  add_compile_options(-fsanitize=undefined)
-  add_link_options(-fsanitize=undefined)
-endfunction()
-
-if(FUZZ_W3C_PROPAGATION)
-  add_compile_options(-fsanitize=fuzzer)
-  add_link_options(-fsanitize=fuzzer)
-  add_sanitizers()
-  add_subdirectory(fuzz/w3c-propagation)
-endif()
-
-if (SANITIZE)
-  add_sanitizers()
-endif()
+add_library(trace_options INTERFACE)
+setup_project(trace_options)
 
 if (BUILD_TESTING)
   set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
-include (ExternalProject)
-ExternalProject_Add(curl
-  URL "https://github.com/curl/curl/releases/download/curl-7_85_0/curl-7.85.0.tar.gz"
-  URL_MD5 "4e9eb4f434e9be889e510f038754d3de"
-  BUILD_IN_SOURCE 1
-  DOWNLOAD_EXTRACT_TIMESTAMP 0
-  SOURCE_DIR ${CMAKE_BINARY_DIR}/curl
-  CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/curl/configure --prefix=${CMAKE_BINARY_DIR} --disable-ftp --disable-ldap --disable-dict --disable-telnet --disable-tftp --disable-pop3 --disable-smtp --disable-gopher --without-ssl --disable-crypto-auth --without-axtls --without-zlib --disable-rtsp --enable-shared=no --enable-static=yes --with-pic --without-brotli --without-libidn2
-  BUILD_COMMAND make -j${MAKE_JOB_COUNT}
-  INSTALL_COMMAND make install
-)
-
-if (MSVC)
-    add_compile_options(/W4 /WX)
-else()
-    add_compile_options(-Wall -Wextra -pedantic -Werror)
-    if (BUILD_COVERAGE)
-      add_compile_options(-g -O0 -fprofile-arcs -ftest-coverage)
-    endif()
-endif()
+include(Dependency.cmake)
+add_external_dependencies()
 
 if(BUILD_COVERAGE)
   set(COVERAGE_LIBRARIES gcov)
@@ -193,24 +137,17 @@ target_sources(dd_trace_cpp-objects PUBLIC
   src/datadog/w3c_propagation.h
 )
 
-add_dependencies(dd_trace_cpp-objects curl)
-
-# Make the build libcurl visible.
-include_directories(${CMAKE_BINARY_DIR}/include)
-
 # Linking this library requires libcurl and threads.
 find_package(Threads REQUIRED)
-target_link_libraries(dd_trace_cpp-objects PUBLIC ${CMAKE_BINARY_DIR}/lib/libcurl.a PUBLIC Threads::Threads ${COVERAGE_LIBRARIES})
+target_link_libraries(dd_trace_cpp-objects PUBLIC libcurl Threads::Threads ${COVERAGE_LIBRARIES} trace_options)
 
 # Produce both shared and static versions of the library.
 add_library(dd_trace_cpp-shared SHARED $<TARGET_OBJECTS:dd_trace_cpp-objects>)
 set_target_properties(dd_trace_cpp-shared PROPERTIES OUTPUT_NAME "dd_trace_cpp")
-add_dependencies(dd_trace_cpp-shared dd_trace_cpp-objects)
 target_link_libraries(dd_trace_cpp-shared dd_trace_cpp-objects)
 
 add_library(dd_trace_cpp-static STATIC $<TARGET_OBJECTS:dd_trace_cpp-objects>)
 set_target_properties(dd_trace_cpp-static PROPERTIES OUTPUT_NAME "dd_trace_cpp")
-add_dependencies(dd_trace_cpp-static dd_trace_cpp-objects)
 target_link_libraries(dd_trace_cpp-static dd_trace_cpp-objects)
 
 # When installing, install the static library, the shared library, and the
@@ -227,4 +164,8 @@ add_subdirectory(examples)
 
 if(BUILD_BENCHMARK)
   add_subdirectory(benchmark)
+endif()
+
+if(FUZZ_W3C_PROPAGATION AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  add_subdirectory(fuzz/w3c-propagation)
 endif()
